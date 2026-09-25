@@ -2,8 +2,8 @@
 (
     SELECT TOP (2000)
            ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS N
-    FROM sys.all_objects a
-    CROSS JOIN sys.all_objects b
+    FROM sys.all_objects A
+    CROSS JOIN sys.all_objects B
 )
 INSERT INTO Fact_Recharge
 (
@@ -47,8 +47,9 @@ INNER JOIN Dim_Subscriber DS
 
 CROSS APPLY
 (
-    SELECT TOP 1 DateID
+    SELECT TOP 1 DD.DateID
     FROM Dim_Date DD
     WHERE DD.FullDate >= DS.ActivationDate
+      AND DD.FullDate <= '2026-09-30'
     ORDER BY NEWID()
 ) DD;
