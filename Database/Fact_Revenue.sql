@@ -1,52 +1,43 @@
-SET NOCOUNT ON;
+;WITH Numbers AS
+(
+    SELECT TOP (2000)
+           ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS N
+    FROM sys.all_objects a
+    CROSS JOIN sys.all_objects b
+)
+INSERT INTO Fact_Revenue
+(
+    SubscriberID,
+    RegionID,
+    DateID,
+    RevenueAmount
+)
+SELECT
+       DS.SubscriberID,
+       DS.RegionID,
 
-DECLARE @Counter INT = 1;
+       DD.DateID,
 
-WHILE @Counter <= 2000
-BEGIN
+       CAST
+       (
+           CASE
+               WHEN DS.PlanID IN (1,2) THEN 150 + ABS(CHECKSUM(NEWID())) % 200
+               WHEN DS.PlanID IN (3,4) THEN 450 + ABS(CHECKSUM(NEWID())) % 400
+               WHEN DS.PlanID IN (5,6,7) THEN 600 + ABS(CHECKSUM(NEWID())) % 600
+               ELSE 100 + ABS(CHECKSUM(NEWID())) % 150
+           END
+       AS DECIMAL(12,2))
 
-    INSERT INTO Fact_Revenue
-    (
-        SubscriberID,
-        RegionID,
-        DateID,
-        RevenueAmount
-    )
-    SELECT TOP 1
-           DS.SubscriberID,
-           DS.RegionID,
+FROM Numbers N
 
-           (
-               SELECT TOP 1 DD.DateID
-               FROM Dim_Date DD
-               WHERE DD.FullDate >= DS.ActivationDate
-               ORDER BY NEWID()
-           ),
+INNER JOIN Dim_Subscriber DS
+    ON DS.SubscriberID =
+       ((N.N - 1) % (SELECT COUNT(*) FROM Dim_Subscriber)) + 1
 
-           CAST
-           (
-               (
-                   CASE DS.PlanID
-                       WHEN 1 THEN 199
-                       WHEN 2 THEN 299
-                       WHEN 3 THEN 499
-                       WHEN 4 THEN 799
-                       WHEN 5 THEN 399
-                       WHEN 6 THEN 699
-                       WHEN 7 THEN 999
-                       WHEN 8 THEN 99
-                       WHEN 9 THEN 149
-                       WHEN 10 THEN 249
-                       ELSE 199
-                   END
-               )
-               +
-               (ABS(CHECKSUM(NEWID())) % 100)
-           AS DECIMAL(12,2))
-
-    FROM Dim_Subscriber DS
-    ORDER BY NEWID();
-
-    SET @Counter += 1;
-
-END;
+CROSS APPLY
+(
+    SELECT TOP 1 DateID
+    FROM Dim_Date DD
+    WHERE DD.FullDate >= DS.ActivationDate
+    ORDER BY NEWID()
+) DD;
