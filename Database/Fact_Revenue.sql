@@ -2,7 +2,7 @@ SET NOCOUNT ON;
 
 DECLARE @Counter INT = 1;
 
-WHILE @Counter <= 10000
+WHILE @Counter <= 2000
 BEGIN
 
     INSERT INTO Fact_Revenue
