@@ -2,8 +2,8 @@
 (
     SELECT TOP (2000)
            ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS N
-    FROM sys.all_objects a
-    CROSS JOIN sys.all_objects b
+    FROM sys.all_objects A
+    CROSS JOIN sys.all_objects B
 )
 INSERT INTO Fact_Revenue
 (
@@ -21,10 +21,17 @@ SELECT
        CAST
        (
            CASE
-               WHEN DS.PlanID IN (1,2) THEN 150 + ABS(CHECKSUM(NEWID())) % 200
-               WHEN DS.PlanID IN (3,4) THEN 450 + ABS(CHECKSUM(NEWID())) % 400
-               WHEN DS.PlanID IN (5,6,7) THEN 600 + ABS(CHECKSUM(NEWID())) % 600
-               ELSE 100 + ABS(CHECKSUM(NEWID())) % 150
+               WHEN DS.PlanID IN (1,2)
+                    THEN 150 + ABS(CHECKSUM(NEWID())) % 200
+
+               WHEN DS.PlanID IN (3,4)
+                    THEN 450 + ABS(CHECKSUM(NEWID())) % 400
+
+               WHEN DS.PlanID IN (5,6,7)
+                    THEN 600 + ABS(CHECKSUM(NEWID())) % 600
+
+               ELSE
+                    100 + ABS(CHECKSUM(NEWID())) % 150
            END
        AS DECIMAL(12,2))
 
@@ -36,8 +43,9 @@ INNER JOIN Dim_Subscriber DS
 
 CROSS APPLY
 (
-    SELECT TOP 1 DateID
+    SELECT TOP 1 DD.DateID
     FROM Dim_Date DD
     WHERE DD.FullDate >= DS.ActivationDate
+      AND DD.FullDate <= '2026-09-30'
     ORDER BY NEWID()
 ) DD;
