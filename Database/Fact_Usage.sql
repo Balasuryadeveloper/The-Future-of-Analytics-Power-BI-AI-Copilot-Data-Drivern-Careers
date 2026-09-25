@@ -2,7 +2,7 @@ SET NOCOUNT ON;
 
 DECLARE @Counter INT = 1;
 
-WHILE @Counter <= 25000
+WHILE @Counter <= 1000
 BEGIN
 
     INSERT INTO Fact_Usage
