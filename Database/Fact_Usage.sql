@@ -1,48 +1,54 @@
-SET NOCOUNT ON;
+;WITH Numbers AS
+(
+    SELECT TOP (3000)
+           ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS N
+    FROM sys.all_objects A
+    CROSS JOIN sys.all_objects B
+)
+INSERT INTO Fact_Usage
+(
+    SubscriberID,
+    RegionID,
+    UsageDateID,
+    VoiceMinutes,
+    SMSCount,
+    DataUsageGB
+)
+SELECT
+       DS.SubscriberID,
+       DS.RegionID,
 
-DECLARE @Counter INT = 1;
+       DD.DateID,
 
-WHILE @Counter <= 1000
-BEGIN
+       -- Voice Usage (10 to 500 Minutes)
+       CAST
+       (
+           10 + (ABS(CHECKSUM(NEWID())) % 491)
+       AS DECIMAL(10,2)
+       ) AS VoiceMinutes,
 
-    INSERT INTO Fact_Usage
-    (
-        SubscriberID,
-        RegionID,
-        UsageDateID,
-        VoiceMinutes,
-        SMSCount,
-        DataUsageGB
-    )
-    SELECT TOP 1
-           DS.SubscriberID,
-           DS.RegionID,
+       -- SMS Usage (0 to 200)
+       ABS(CHECKSUM(NEWID())) % 201 AS SMSCount,
 
-           (
-                SELECT TOP 1 DD.DateID
-                FROM Dim_Date DD
-                WHERE DD.FullDate >= DS.ActivationDate
-                ORDER BY NEWID()
-           ) AS UsageDateID,
+       -- Data Usage (0.50 GB to 25.00 GB)
+       CAST
+       (
+           ((ABS(CHECKSUM(NEWID())) % 2451) + 50)
+           / 100.0
+       AS DECIMAL(10,2)
+       ) AS DataUsageGB
 
-           -- Voice Usage (10 to 500 minutes)
-           CAST(
-                10 + (ABS(CHECKSUM(NEWID())) % 491)
-           AS DECIMAL(10,2)),
+FROM Numbers N
 
-           -- SMS Usage (0 to 200 SMS)
-           ABS(CHECKSUM(NEWID())) % 201,
+INNER JOIN Dim_Subscriber DS
+    ON DS.SubscriberID =
+       ((N.N - 1) % (SELECT COUNT(*) FROM Dim_Subscriber)) + 1
 
-           -- Data Usage (0.50 GB to 25.00 GB)
-           CAST(
-                (
-                    (ABS(CHECKSUM(NEWID())) % 2451) + 50
-                ) / 100.0
-           AS DECIMAL(10,2))
-
-    FROM Dim_Subscriber DS
-    ORDER BY NEWID();
-
-    SET @Counter += 1;
-
-END;
+CROSS APPLY
+(
+    SELECT TOP 1 DD.DateID
+    FROM Dim_Date DD
+    WHERE DD.FullDate >= DS.ActivationDate
+      AND DD.FullDate <= '2026-09-30'
+    ORDER BY NEWID()
+) DD;
